@@ -25,8 +25,19 @@ jobs:
         with:
           submodules: false
 
+      # claude-token contient des placeholders (TEAM_DOMAIN/ACCESS_AUD) :
+      # jamais de deploiement auto sur push, seulement via workflow_dispatch.
+      - name: Verifier les placeholders claude-token
+        if: github.event.inputs.worker == 'claude-token'
+        run: |
+          if grep -q 'A_REMPLIR' workers/claude-token/wrangler.jsonc; then
+            echo "ERREUR : workers/claude-token/wrangler.jsonc contient encore 'A_REMPLIR'" >&2
+            echo "Renseigne TEAM_DOMAIN et ACCESS_AUD avant de deployer." >&2
+            exit 1
+          fi
+
       - name: Deploy claude-token
-        if: github.event.inputs.worker == 'claude-token' || github.event_name == 'push'
+        if: github.event.inputs.worker == 'claude-token'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
