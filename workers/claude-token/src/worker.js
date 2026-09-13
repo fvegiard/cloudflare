@@ -104,3 +104,72 @@ button:hover{background:#3d7ae4}
 .who{margin-top:18px;font-size:12px;color:#5c6570}
 </style></head><body><div class="card">${body}</div></body></html>`,
   { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+
+export default {
+  async fetch(request, env) {
+    const who = await verifyAccessJwt(request.headers.get("Cf-Access-Jwt-Assertion"), env);
+    if (!who) return plain("Acces refuse. Identite Cloudflare Access non verifiee.", 403);
+
+    const url = new URL(request.url);
+
+    if (url.pathname === "/token") {
+      const token = await env.CLAUDE_TOKENS.get(KEY);
+      if (!token) return plain("", 404);
+      return plain(token);
+    }
+
+    if (url.pathname === "/install.sh") {
+      return plain('#!/usr/bin/env bash\nset -euo pipefail\nCLAUDE_CODE_OAUTH_TOKEN="$(curl -fsS "'
+        + url.origin + '/token" \\\n  -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \\\n'
+        + '  -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}")"\nexport CLAUDE_CODE_OAUTH_TOKEN\n');
+    }
+
+    if (url.pathname === "/install.ps1") {
+      return plain('$env:CLAUDE_CODE_OAUTH_TOKEN = (Invoke-RestMethod -Uri "'
+        + url.origin + '/token" -Headers @{\n'
+        + '  "CF-Access-Client-Id"     = $env:CF_ACCESS_CLIENT_ID\n'
+        + '  "CF-Access-Client-Secret" = $env:CF_ACCESS_CLIENT_SECRET\n})\n');
+    }
+
+    if (request.method === "POST" && url.pathname === "/") {
+      const form = await request.formData();
+      const token = String(form.get("token") || "").trim();
+      if (!token) {
+        return page('<h1>Jeton vide</h1><p class="sub">Rien n\'a ete enregistre.</p><a href="/"><button type="button">Retour</button></a>');
+      }
+      await env.CLAUDE_TOKENS.put(KEY, token);
+      await env.CLAUDE_TOKENS.put(META, JSON.stringify({ updated: new Date().toISOString(), by: who }));
+      return Response.redirect(url.origin + "/?ok=1", 303);
+    }
+
+    const token = await env.CLAUDE_TOKENS.get(KEY);
+    const metaRaw = await env.CLAUDE_TOKENS.get(META);
+    let when = "";
+    if (metaRaw) {
+      try {
+        when = new Date(JSON.parse(metaRaw).updated)
+          .toLocaleString("fr-CA", { timeZone: "America/Toronto" });
+      } catch { /* meta illisible */ }
+    }
+
+    const state = token
+      ? '<div class="state ok"><span class="dot"></span>Jeton en place, finit par <code>...'
+        + token.slice(-6) + '</code>' + (when ? ' &middot; mis a jour le ' + when : '') + '</div>'
+      : '<div class="state empty"><span class="dot"></span>Aucun jeton enregistre</div>';
+
+    return page(
+      '<h1>Coffre a jeton Claude</h1>'
+      + '<p class="sub">Un seul endroit. Toutes tes machines lisent ici.</p>'
+      + state
+      + '<form method="POST" action="/">'
+      + '<label for="token">' + (token ? "Remplacer le jeton" : "Coller le jeton")
+      + ' &mdash; sortie de <code>claude setup-token</code></label>'
+      + '<textarea id="token" name="token" placeholder="sk-ant-oat..." spellcheck="false" autocomplete="off"></textarea>'
+      + '<button type="submit">' + (token ? "Remplacer" : "Enregistrer") + '</button>'
+      + '</form>'
+      + '<div class="meta">Les machines lisent <code>' + url.origin + '/token</code>'
+      + ' avec leurs entetes de jeton de service.<br>Amorcage : <code>/install.sh</code> &middot; <code>/install.ps1</code></div>'
+      + '<div class="who">Identite verifiee : ' + who + '</div>'
+    );
+  },
+};

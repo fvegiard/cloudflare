@@ -1,0 +1,19 @@
+{
+  "name": "claude-token",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-05-25",
+  "account_id": "ea42abd83477186ff36c312182a9318e",
+  "workers_dev": false,
+
+  "kv_namespaces": [
+    { "binding": "CLAUDE_TOKENS", "id": "4ac277f16d42450fb92bc49362c4b523" }
+  ],
+
+  // TEAM_DOMAIN : ton domaine Access, ex. francis.cloudflareaccess.com
+  // ACCESS_AUD  : le tag Audience de l'application Access qui protege ce Worker
+  // A confirmer dans Zero Trust > Access > Applications avant tout redeploiement.
+  "vars": {
+    "TEAM_DOMAIN": "A_REMPLIR.cloudflareaccess.com",
+    "ACCESS_AUD": "A_REMPLIR"
+  }
+}
