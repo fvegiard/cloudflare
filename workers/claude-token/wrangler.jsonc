@@ -3,17 +3,27 @@
   "main": "src/worker.js",
   "compatibility_date": "2026-05-25",
   "account_id": "ea42abd83477186ff36c312182a9318e",
-  "workers_dev": false,
+
+  // workers_dev : DOIT rester true. C'est le seul point d'entree HTTP du Worker
+  // (aucun custom domain / route configure - verifie via GET /accounts/{id}/workers/domains
+  // et /accounts/{id}/workers/scripts, 2026-09-14). Cloudflare Access protege deja ce
+  // sous-domaine via une App "worker destination" (pas besoin de domaine personnalise).
+  // Mettre workers_dev a false desactiverait ce sous-domaine et rendrait le Worker
+  // injoignable (plus rien pour Access a proteger).
+  "workers_dev": true,
 
   "kv_namespaces": [
     { "binding": "CLAUDE_TOKENS", "id": "4ac277f16d42450fb92bc49362c4b523" }
   ],
 
-  // TEAM_DOMAIN : ton domaine Access, ex. francis.cloudflareaccess.com
-  // ACCESS_AUD  : le tag Audience de l'application Access qui protege ce Worker
-  // A confirmer dans Zero Trust > Access > Applications avant tout redeploiement.
+  // TEAM_DOMAIN / ACCESS_AUD confirmes le 2026-09-14 via l'API Zero Trust
+  // (GET /accounts/{id}/access/organizations puis /accounts/{id}/access/apps) :
+  // App "Coffre a jeton Claude" (id b263ef69-f346-4f2e-be1d-a9a442ad7406),
+  // destination de type "worker" -> worker_id 58a73316756f498a893a1fb27bf840ed
+  // (= tag du script claude-token). Verifie en direct : requete sans JWT sur
+  // https://claude-token.fvegiard.workers.dev/ -> 302 vers ce TEAM_DOMAIN.
   "vars": {
-    "TEAM_DOMAIN": "A_REMPLIR.cloudflareaccess.com",
-    "ACCESS_AUD": "A_REMPLIR"
+    "TEAM_DOMAIN": "jolly-feather-73f5.cloudflareaccess.com",
+    "ACCESS_AUD": "82c3fc94515759b4b69567ce3f971e1844cb2e1036f05ab6497865e165411509"
   }
 }
