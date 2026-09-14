@@ -5,9 +5,18 @@
   "account_id": "ea42abd83477186ff36c312182a9318e",
   "workers_dev": false,
 
-  // Ce Worker est un proxy vers un service de routage interne via le binding
-  // service "ROUTER". Cible a definir dans Dashboard > Workers > francis-cli-router
-  // > Settings > Variables and Bindings, quand le routeur existera.
+  // ROUTER (binding service) laisse NON CABLE volontairement (2026-09-14).
+  // Verifie en direct : GET /accounts/{id}/workers/scripts (2026-09-14) ne liste
+  // aucun service "francis-cli-router" ni aucun autre service de routage dans le
+  // compte -> il n'y a rien de plausible vers quoi cabler ROUTER.
+  // private/ETAT.md et private/COORDINATION.md (etat local non commite au
+  // 2026-09-14) indiquent en plus que francis-cli-router a ete supprime le
+  // 2026-09-14, remplace par Cloudflare AI Gateway (gateway "francis-ai" cree le
+  // meme jour, confirme via GET /accounts/{id}/ai-gateway/gateways).
+  // Decision (stand-in pour Francis) : ne pas inventer de service, garder
+  // ROUTER_READY=false (503 volontaire, cf. src/worker.mjs) et ne plus deployer
+  // ce Worker automatiquement sur push (voir deploy-workers.yml) tant que Francis
+  // n'a pas confirme s'il faut le raviver ou le retirer definitivement du repo.
   "vars": {
     "ROUTER_READY": "false"
   }

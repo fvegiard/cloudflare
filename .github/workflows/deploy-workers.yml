@@ -25,6 +25,26 @@ jobs:
         with:
           submodules: false
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Tests Vitest (@cloudflare/vitest-plugin, execution dans le runtime Workers
+      # via Miniflare) : executes avant tout deploiement, sur push comme sur
+      # workflow_dispatch. https://developers.cloudflare.com/workers/testing/vitest-integration/
+      - name: Tests claude-token
+        working-directory: workers/claude-token
+        run: |
+          npm install
+          npm test
+
+      - name: Tests cli-router
+        working-directory: workers/cli-router
+        run: |
+          npm install
+          npm test
+
       # claude-token contient des placeholders (TEAM_DOMAIN/ACCESS_AUD) :
       # jamais de deploiement auto sur push, seulement via workflow_dispatch.
       - name: Verifier les placeholders claude-token
@@ -38,18 +58,25 @@ jobs:
 
       - name: Deploy claude-token
         if: github.event.inputs.worker == 'claude-token'
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/claude-token
+          wranglerVersion: "4"
           command: deploy
 
+      # Decision (stand-in pour Francis, 2026-09-14) : plus de deploiement auto sur
+      # push. private/ETAT.md + GET /accounts/{id}/workers/scripts confirment que ce
+      # Worker a ete supprime du compte (remplace par Cloudflare AI Gateway) ; un
+      # push ne doit pas le ressusciter silencieusement. Deploiement manuel toujours
+      # possible via workflow_dispatch si Francis decide de le reactiver.
       - name: Deploy cli-router
-        if: github.event.inputs.worker == 'cli-router' || github.event_name == 'push'
-        uses: cloudflare/wrangler-action@v3
+        if: github.event.inputs.worker == 'cli-router'
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/cli-router
+          wranglerVersion: "4"
           command: deploy
